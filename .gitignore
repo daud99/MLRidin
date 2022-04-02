@@ -4,6 +4,6 @@ mlridin.log
 pcaps/*
 features/__pycache__/*
 features/context/__pycache__/*
-machinelearning__pycache__/*
+machinelearning/__pycache__/*
 flow.csv
 models/*
