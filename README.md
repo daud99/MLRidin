@@ -18,9 +18,7 @@ pip install -r requirements.txt
 
 ## Usage
 > usage: mlridin [-h] (-i INPUT_INTERFACE | -f INPUT_FILE) [-c] [--output-file OUTPUT]
-
 > A Machine Learning based Real-time Intrusion Detection System in Network
-
 > optional arguments:
 >  -h, --help            show this help message and exit
 >  -i INPUT_INTERFACE, --interface INPUT_INTERFACE
