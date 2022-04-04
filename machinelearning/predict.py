@@ -11,7 +11,7 @@ import pandas as pd
 
 from machinelearning import ClassDetail
 
-def readCSVRealTime(output_file, buffer_size=100):
+def readCSVRealTime(output_file, buffer_size=800):
     line_count = 0
     lines = []
     with open(output_file) as csv_file:

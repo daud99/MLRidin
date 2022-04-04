@@ -82,10 +82,8 @@ class FlowSession(DefaultSession):
                     self.flows[(packet_flow_key, count)] = flow
                     break
         elif "F" in str(packet.flags):
-            # If it has FIN flag then early collect flow and continue
-            # print('packet.flags')
-            # print(packet.flags)
-            # flow.add_packet(packet, direction)
+            # If it has FIN flag then early collect flow and continuex
+            flow.add_packet(packet, direction)
             self.garbage_collect(packet.time)
             return
 

@@ -262,13 +262,7 @@ class Flow:
             duration = abs(float(self.last_active - self.start_active))
             if duration > 0:
                 self.active.append(1e6 * duration)
-            # if self.last_active == 0:
-            #     print('1e6')
-            #     print(type(1e6))
-            #     print(1e6)
-            #     self.idle.append(1e6 * float(current_time) )
-            # else:
-            #     self.idle.append(1e6 * (current_time - self.last_active))
+
             self.idle.append(1e6 * float(current_time - self.last_active))
             self.start_active = current_time
             self.last_active = current_time
