@@ -14,10 +14,9 @@ def get_packet_flow_key(packet, direction) -> tuple:
 
     Returns:
         A tuple of the String IPv4 addresses of the destination,
+        String IPv4 addresses of the source,
         the source port as an int,
-        the time to live value,
-        the window size, and
-        TCP flags.
+        the destination port as an int.
 
     """
 
