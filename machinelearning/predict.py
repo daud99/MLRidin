@@ -3,15 +3,104 @@ import logging.config
 logger = logging.getLogger(__name__)
 
 from datetime import datetime
+import time
+from typing import Dict
 import json
 import re
 import pickle
 import numpy as np
 import pandas as pd
-
+from elasticsearch import Elasticsearch
 from machinelearning import ClassDetail
 
-def readCSVRealTime(output_file, buffer_size=800):
+
+
+flow_mapping = {
+    "mappings": {
+        "properties": {
+            "flow_id": {"type": "text"},
+            "source_ip": {"type": "ip"},
+            "source_port": {"type": "integer"},
+            "destination_ip": {"type": "ip"},
+            "destination_port": {"type": "integer"},
+            "protocol": {"type": "integer"},
+            "timestamp": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"}, # 2021-08-09 22:31:49
+            "flow_duration": {"type": "double"},
+            "total_forward_packet": {"type": "integer"},
+            "total_backward_packet": {"type": "integer"},
+            "total_length_of_forward_packet": {"type": "integer"},
+            "total_length_of_backward_packet": {"type": "integer"},
+            "forward_packet_max_length": {"type": "double"},
+            "forward_packet_min_length": {"type": "double"},
+            "forward_packet_mean_length": {"type": "double"},
+            "forward_packet_std_length": {"type": "double"},
+            "backward_packet_max_length": {"type": "double"},
+            "backward_packet_min_length": {"type": "double"},
+            "backward_packet_mean_length": {"type": "double"},
+            "backward_packet_std_length": {"type": "double"},
+            "flow_bytes": {"type": "double"},
+            "flow_packets": {"type": "double"},
+            "flow_iat_mean": {"type": "double"},
+            "flow_iat_std": {"type": "double"},
+            "flow_iat_max": {"type": "double"},
+            "flow_iat_min": {"type": "double"},
+            "fwd_iat_total": {"type": "double"},
+            "fwd_iat_mean": {"type": "double"},
+            "fwd_iat_mean": {"type": "double"},
+            "fwd_iat_std": {"type": "double"},
+            "fwd_iat_max": {"type": "double"},
+            "fwd_iat_min": {"type": "double"},
+            "bwd_iat_total": {"type": "double"},
+            "bwd_iat_mean": {"type": "double"},
+            "bwd_iat_std": {"type": "double"},
+            "bwd_iat_max": {"type": "double"},
+            "bwd_iat_min": {"type": "double"},
+            "fwd_psh_flags": {"type": "double"},
+            "bwd_psh_flags": {"type": "double"},
+            "fwd_urg_flags": {"type": "double"},
+            "bwd_urg_flags": {"type": "double"},
+            "fwd_header_length": {"type": "double"},
+            "bwd_header_length": {"type": "double"},
+            "fwd_packets/s": {"type": "double"},
+            "bwd_packets/s": {"type": "double"},
+            "packet_length_min": {"type": "double"},
+            "packet_length_max": {"type": "double"},
+            "packet_length_mean": {"type": "double"},
+            "packet_length_std": {"type": "double"},
+            "packet_length_variance": {"type": "double"},
+            "fin_flag_count": {"type": "double"},
+            "syn_flag_count": {"type": "double"},
+            "rst_flag_count": {"type": "double"},
+            "psh_flag_count": {"type": "double"},
+            "ack_flag_count": {"type": "double"},
+            "urg_flag_count": {"type": "double"},
+            "ece_flag_count": {"type": "double"},
+            "down/up_ratio": {"type": "double"},
+            "average_packet_size,": {"type": "double"},
+            "fwd_bytes/bulk_avg": {"type": "double"},
+            "fwd_packet/bulk_avg": {"type": "double"},
+            "fwd_bulk_rate_avg": {"type": "double"},
+            "bwd_bytes/bulk_avg": {"type": "double"},
+            "bwd_packet/bulk_avg": {"type": "double"},
+            "bwd_Bulk_rate_avg": {"type": "double"},
+            "fwd_init_win_bytes": {"type": "integer"},
+            "bwd_init_win_bytes": {"type": "integer"},
+            "fwd_act_data_pkts": {"type": "integer"},
+            "fwd_seg_size_min": {"type": "integer"},
+            "active_mean": {"type": "double"},
+            "active_std": {"type": "double"},
+            "active_max": {"type": "double"},
+            "active_min": {"type": "double"},
+            "idle_mean": {"type": "double"},
+            "idle_std": {"type": "double"},
+            "idle_max": {"type": "double"},
+            "idle_min": {"type": "double"},
+            "label": {"type": "text"},
+        }
+    }
+}
+
+def readCSVRealTime(output_file, buffer_size=200):
     line_count = 0
     lines = []
     with open(output_file) as csv_file:
@@ -40,7 +129,29 @@ def getAlertLevel(probability, predicted_class):
     elif (probability >= 80 and probability <= 100):
         return 'Level 3'
 
+
+def create_index(es, index_name: str, mapping: Dict) -> None:
+    """
+    Create an ES index.
+    :param index_name: Name of the index.
+    :param mapping: Mapping of the index
+    """
+    if not es.indices.exists(index=index_name):
+        logger.info(f"Creating index {index_name} with the following schema: {json.dumps(mapping, indent=2)}")
+        es.indices.create(index=index_name, ignore=400, body=mapping)
+
 def predict(output_file):
+
+    try:
+        print('Connecting to Elastic Search')
+        es = Elasticsearch("http://192.168.0.111:9200")
+        create_index(es, 'flows', flow_mapping)
+        print("Successfully connected to ElasticSearch")
+
+    except Exception as e:
+        print("Error connecting to Elastic Search")
+        print(e)
+
     alert = {}
     first = True
     try:
@@ -50,6 +161,20 @@ def predict(output_file):
                 head = each[0].rstrip().split(',')
                 del each[0]
             refine = [line.rstrip().split(',') for line in each]
+
+            current_batch_id = str(time.time()).replace('.','')
+
+            # Inserting docs in Elastic Search
+            json_head = [field.replace(' ','_').lower() for field in head]
+            df = pd.DataFrame(columns=json_head, data=refine)
+            for doc in df.apply(lambda x: x.to_dict(), axis=1):
+                doc['flow_id'] = current_batch_id
+                es.index(index='flows', body=json.dumps(doc))
+
+
+
+            # for flow in refine:
+            #     print(flow)
             df = pd.DataFrame(refine, columns=head)
             # print(df)
             ndataset=df.drop(['Src IP','Src Port','Dst IP','Dst Port','Protocol','Timestamp'], axis=1)
@@ -101,7 +226,7 @@ def predict(output_file):
                     # print(name[1]+":\t"+str(((y*100)/x))[:6])
                     alert[name[1]] = str(((y*100)/x))[:6]
 
-
+            alert['flow_id'] = current_batch_id
             alert['description'] = ClassDetail.CLASS_DETAIL[predicted_class]
             alert['predicted_class'] = predicted_class
             alert['predicted_class_probability'] = str(high)
@@ -113,7 +238,7 @@ def predict(output_file):
             # predicted_malware = predicted_class
             # print(predicted_malware)
             # print(detail)
-            print(alert)
+            # print(alert)
     except Exception as e:
         logger.info("Error while calling sniffer.")
         logger.exception(e)

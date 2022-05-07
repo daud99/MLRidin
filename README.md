@@ -37,4 +37,9 @@ optional arguments:
 ```sh
 python main.py -i interface -c
 ```
+
+## Checking PCAP file
+```sh
+python main.py --file /home/daud/code/mlridinIntegrated/pcaps/hulk.pcap -c
+```
 > Root privilege is require to performe analysis in real-time.
