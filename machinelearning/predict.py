@@ -170,13 +170,8 @@ def predict(output_file):
             for doc in df.apply(lambda x: x.to_dict(), axis=1):
                 doc['flow_id'] = current_batch_id
                 es.index(index='flows', body=json.dumps(doc))
-
-
-
-            # for flow in refine:
-            #     print(flow)
+                
             df = pd.DataFrame(refine, columns=head)
-            # print(df)
             ndataset=df.drop(['Src IP','Src Port','Dst IP','Dst Port','Protocol','Timestamp'], axis=1)
             # Removing whitespaces in column names.
             ncol_names = [col.replace(' ', '') for col in ndataset.columns]
