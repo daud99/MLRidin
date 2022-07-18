@@ -13,7 +13,31 @@ import pandas as pd
 from elasticsearch import Elasticsearch
 from machinelearning import ClassDetail
 
-
+alert_mapping = {
+    "mappings": {
+        "properties": {
+            "DosGoldenEye": {"type": "double"},
+            "DosHulk": {"type": "double"},
+            "DosLOIC": {"type": "double"},
+            "DosSlowHttp": {"type": "double"},
+            "DosSlowloris": {"type": "double"},
+            "FTPPatator": {"type": "double"},
+            "SSHPatator": {"type": "double"},
+            "SqlInjWeb": {"type": "double"},
+            "XssWeb": {"type": "double"},
+            "heartbleed": {"type": "double"},
+            "httpWebAttack": {"type": "double"},
+            "portscan": {"type": "double"},
+            "XssWeb": {"type": "double"},
+            "flow_id": {"type": "text"},
+            "description": {"type": "text"},
+            "predicted_class": {"type": "text"},
+            "predicted_class_probability": {"type": "text"},
+            "level": {"type": "text"},   
+            "timestamp": {"type": "date", "format": "dd/MM/yyyy HH:mm:ss"}, # 07/05/2022 20:13:47
+        }
+    }
+}
 
 flow_mapping = {
     "mappings": {
@@ -100,7 +124,7 @@ flow_mapping = {
     }
 }
 
-def readCSVRealTime(output_file, buffer_size=200):
+def readCSVRealTime(output_file, buffer_size=50):
     line_count = 0
     lines = []
     with open(output_file) as csv_file:
@@ -144,8 +168,9 @@ def predict(output_file):
 
     try:
         print('Connecting to Elastic Search')
-        es = Elasticsearch("http://192.168.0.111:9200")
+        es = Elasticsearch("http://127.0.0.1:9200")
         create_index(es, 'flows', flow_mapping)
+        create_index(es, 'alerts', alert_mapping)
         print("Successfully connected to ElasticSearch")
 
     except Exception as e:
@@ -228,8 +253,12 @@ def predict(output_file):
             alert['level'] = getAlertLevel(high, predicted_class)
             now = datetime.now()
             alert['timestamp'] = now.strftime("%d/%m/%Y %H:%M:%S")
+            print("alert is going to be saved")
+            print(json.dumps(alert))
             with open('alerts/alerts.json', 'a+') as alerts:
                 alerts.write(json.dumps(alert)+'\n')
+            es.index(index='alerts', body=json.dumps(alert))
+
             # predicted_malware = predicted_class
             # print(predicted_malware)
             # print(detail)
