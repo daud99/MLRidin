@@ -10,7 +10,7 @@ import re
 import pickle
 import numpy as np
 import pandas as pd
-from elasticsearch import Elasticsearch
+# from elasticsearch import Elasticsearch
 from machinelearning import ClassDetail
 
 alert_mapping = {
@@ -154,28 +154,28 @@ def getAlertLevel(probability, predicted_class):
         return 'Level 3'
 
 
-def create_index(es, index_name: str, mapping: Dict) -> None:
-    """
-    Create an ES index.
-    :param index_name: Name of the index.
-    :param mapping: Mapping of the index
-    """
-    if not es.indices.exists(index=index_name):
-        logger.info(f"Creating index {index_name} with the following schema: {json.dumps(mapping, indent=2)}")
-        es.indices.create(index=index_name, ignore=400, body=mapping)
+# def create_index(es, index_name: str, mapping: Dict) -> None:
+#     """
+#     Create an ES index.
+#     :param index_name: Name of the index.
+#     :param mapping: Mapping of the index
+#     """
+#     if not es.indices.exists(index=index_name):
+#         logger.info(f"Creating index {index_name} with the following schema: {json.dumps(mapping, indent=2)}")
+#         es.indices.create(index=index_name, ignore=400, body=mapping)
 
 def predict(output_file):
 
-    try:
-        print('Connecting to Elastic Search')
-        es = Elasticsearch("http://127.0.0.1:9200")
-        create_index(es, 'flows', flow_mapping)
-        create_index(es, 'alerts', alert_mapping)
-        print("Successfully connected to ElasticSearch")
+    # try:
+    #     print('Connecting to Elastic Search')
+    #     es = Elasticsearch("http://127.0.0.1:9200")
+    #     create_index(es, 'flows', flow_mapping)
+    #     create_index(es, 'alerts', alert_mapping)
+    #     print("Successfully connected to ElasticSearch")
 
-    except Exception as e:
-        print("Error connecting to Elastic Search")
-        print(e)
+    # except Exception as e:
+    #     print("Error connecting to Elastic Search")
+    #     print(e)
 
     alert = {}
     first = True
@@ -192,9 +192,9 @@ def predict(output_file):
             # Inserting docs in Elastic Search
             json_head = [field.replace(' ','_').lower() for field in head]
             df = pd.DataFrame(columns=json_head, data=refine)
-            for doc in df.apply(lambda x: x.to_dict(), axis=1):
-                doc['flow_id'] = current_batch_id
-                es.index(index='flows', body=json.dumps(doc))
+            # for doc in df.apply(lambda x: x.to_dict(), axis=1):
+            #     doc['flow_id'] = current_batch_id
+            #     es.index(index='flows', body=json.dumps(doc))
                 
             df = pd.DataFrame(refine, columns=head)
             ndataset=df.drop(['Src IP','Src Port','Dst IP','Dst Port','Protocol','Timestamp'], axis=1)
@@ -257,7 +257,7 @@ def predict(output_file):
             print(json.dumps(alert))
             with open('alerts/alerts.json', 'a+') as alerts:
                 alerts.write(json.dumps(alert)+'\n')
-            es.index(index='alerts', body=json.dumps(alert))
+            # es.index(index='alerts', body=json.dumps(alert))
 
             # predicted_malware = predicted_class
             # print(predicted_malware)
